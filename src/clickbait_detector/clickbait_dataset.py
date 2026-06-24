@@ -1,5 +1,5 @@
 import pandas as pd
-from src.clickbait_detector.preprocessing import prepare_data
+from clickbait_detector.preprocessing import prepare_data
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
