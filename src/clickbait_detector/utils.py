@@ -4,6 +4,13 @@ import time
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from clickbait_detector.net import Model
+
+def load_model(weight_path):
+    state_dict = torch.load(weight_path)
+    model = Model()
+    model.load_state_dict(state_dict["model"])
+    return model
 
 def create_dataloader(train_dataset, val_dataset, test_dataset, batch_size=8):
     train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
