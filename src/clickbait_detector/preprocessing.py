@@ -30,11 +30,3 @@ def prepare_data(headlines, tokenizer, max_len=50):
     attention_mask = encoded["attention_mask"]
     return input_ids, attention_mask
 
-# if __name__ == "__main__":
-#     headlines = ["Chàng trai 22 tuổi quyết cưới bạn thân của mẹ 42 tuổi: Nhà gái thách cưới hơn 1 tỷ đồng gây sốc",
-#                  "Nếu chưa biết mặc gì đi làm, hãy thử style công sở kiểu quý cô nước Pháp"]
-#
-#     input_ids, attention_mask = prepare_data(headlines)
-#     if input_ids and attention_mask:
-#         print(input_ids)
-#         print(attention_mask)
