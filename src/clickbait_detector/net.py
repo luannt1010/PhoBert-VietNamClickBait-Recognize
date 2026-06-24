@@ -19,27 +19,26 @@ class Model(nn.Module):
         out = self.classifier(out)
         return out
 
-if __name__ == "__main__":
-    model = Model()
-    print(1)
-    from clickbait_dataset import ClickBaitDataset
-    import pandas as pd
-    from transformers import AutoTokenizer
-    from torch.utils.data import DataLoader
-    tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base-v2")
-    d = ClickBaitDataset(r"D:\private\clickbait_detect_proj\data\raw\train_clickbait.csv", tokenizer)
-    d = DataLoader(d, batch_size=16, shuffle=True)
-    for target, input_ids, attention_mask in d:
-
-        outputs = torch.sigmoid(model(input_ids, attention_mask))
-        print("Outputs:", outputs.squeeze(1))
-
-        logits = outputs.squeeze(1)
-        preds = (logits >= 0.5).to(torch.int64)
-
-
-        num_correct = (preds==target).sum().item()
-        print(preds)
-        print(target)
-        print(num_correct)
-        break
+# if __name__ == "__main__":
+#     model = Model()
+#     print(1)
+#     from clickbait_dataset import ClickBaitDataset
+#     from transformers import AutoTokenizer
+#     from torch.utils.data import DataLoader
+#     tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base-v2")
+#     d = ClickBaitDataset(r"D:\private\clickbait_detect_proj\data\raw\train_clickbait.csv")
+#     d = DataLoader(d, batch_size=16, shuffle=True)
+#     for target, input_ids, attention_mask in d:
+#         print(input_ids.shape)
+#         outputs = torch.sigmoid(model(input_ids, attention_mask))
+#         print("Outputs:", outputs.squeeze(1))
+#
+#         logits = outputs.squeeze(1)
+#         preds = (logits >= 0.5).to(torch.int64)
+#
+#
+#         num_correct = (preds==target).sum().item()
+#         print(preds)
+#         print(target)
+#         print(num_correct)
+#         break
