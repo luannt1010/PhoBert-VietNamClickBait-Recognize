@@ -20,7 +20,7 @@ def preprocess_headlines(headlines):
         results.append(segmented)
     return results
 
-def prepare_data(headlines, tokenizer, max_len=100):
+def prepare_data(headlines, tokenizer, max_len=50):
     if len(headlines) == 0:
         return None, None
 
