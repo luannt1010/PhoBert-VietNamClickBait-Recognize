@@ -1,0 +1,30 @@
+[project]
+name = "clickbait-detector"
+version = "0.1.0"
+description = "Vietnamese clickbait headline detection using PhoBERT"
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "torch",
+    "transformers",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "tqdm",
+    "pyvi"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "isort"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
