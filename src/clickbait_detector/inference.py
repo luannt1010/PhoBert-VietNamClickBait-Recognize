@@ -26,10 +26,9 @@ def infer(model, input_sentence, threshold=0.5, max_len=50):
     with torch.no_grad():
         outputs = model(input_ids, attention_mask)
         score = torch.sigmoid(outputs).squeeze(1).item()
-    if score >= threshold:
-        print(f"This sentence is clickbait")
-    else:
-        print(f"This sentence is non-clickbait")
+    print(f"Sentence: {input_sentence}")
+    print(f"Prediction: {"clickbait" if score >= threshold else "non-clickbait"}")
+    print(f"Score: {score}")
 
 if __name__ == "__main__":
     args = get_args()
