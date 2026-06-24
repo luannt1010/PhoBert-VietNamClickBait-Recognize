@@ -13,6 +13,7 @@ def get_args():
 
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--max_len", type=int, default=50)
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -20,10 +21,11 @@ if __name__ == "__main__":
     train_path = args.train_path
     val_path = args.val_path
     test_path = args.test_path
+    max_len = args.max_len
 
-    train_dataset = ClickBaitDataset(train_path)
-    val_dataset = ClickBaitDataset(val_path)
-    test_dataset = ClickBaitDataset(test_path)
+    train_dataset = ClickBaitDataset(train_path, max_len)
+    val_dataset = ClickBaitDataset(val_path, max_len)
+    test_dataset = ClickBaitDataset(test_path, max_len)
     print(f"Length of train dataset: {len(train_dataset)}")
     print(f"Length of validation dataset: {len(val_dataset)}")
     print(f"Length of test dataset: {len(test_dataset)}")
