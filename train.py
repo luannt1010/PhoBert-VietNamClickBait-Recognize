@@ -11,6 +11,7 @@ def get_args():
     parser.add_argument("--test_path", type=str, default=r"./data/raw/test_clickbait.csv")
     parser.add_argument("--save_path", type=str, default=r"./artifacts")
 
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--max_len", type=int, default=50)
@@ -22,6 +23,7 @@ if __name__ == "__main__":
     val_path = args.val_path
     test_path = args.test_path
     max_len = args.max_len
+    batch_size = args.batch_size
 
     train_dataset = ClickBaitDataset(train_path, max_len)
     val_dataset = ClickBaitDataset(val_path, max_len)
@@ -30,7 +32,7 @@ if __name__ == "__main__":
     print(f"Length of validation dataset: {len(val_dataset)}")
     print(f"Length of test dataset: {len(test_dataset)}")
 
-    train_loader, val_loader, test_loader = create_dataloader(train_dataset, val_dataset, test_dataset)
+    train_loader, val_loader, test_loader = create_dataloader(train_dataset, val_dataset, test_dataset, batch_size)
 
     model = Model()
 
