@@ -8,6 +8,8 @@ class Model(nn.Module):
         self.bert = AutoModel.from_pretrained("vinai/phobert-base-v2")
         self.dropout = nn.Dropout(dropout_rate)
         self.classifier = nn.Linear(self.bert.config.hidden_size, 1)
+        nn.init.normal_(self.classifier.weight,mean=0.0, std=0.02)
+        nn.init.zeros_(self.classifier.bias)
 
     def forward(self, input_ids, attention_mask):
         last_hidden_state, output = self.bert(
