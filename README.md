@@ -112,7 +112,7 @@ Place the dataset files inside:
 data/raw/
 ```
 
-Example files:
+Example files (you can download it in .\notebooks\download_dataset.ipynb):
 
 ```text
 data/raw/train_clickbait.csv
@@ -122,7 +122,7 @@ data/raw/val_clickbait.csv
 The CSV files should have this format:
 
 ```csv
-headline,label
+title,final_label
 "Bạn sẽ không tin điều gì đã xảy ra sau khi cô gái mở chiếc hộp bí ẩn này",1
 "Chính phủ công bố kế hoạch nâng cấp hệ thống giao thông đô thị trong năm 2026",0
 ```
@@ -130,8 +130,8 @@ headline,label
 Required columns:
 
 ```text
-headline: the news headline text
-label: the binary label
+title: the news headline text
+final_label: the binary label
 ```
 
 Label meaning:
@@ -146,13 +146,21 @@ Label meaning:
 Move to the project root directory:
 
 ```bash
-cd D:\private\clickbait_detect_proj
+cd .\PhoBert-VietNamClickBait-Recognize
 ```
 
 Run training:
 
 ```bash
-python train.py
+python train.py \
+    --train_path ./data/raw/train_clickbait.csv \
+    --val_path ./data/raw/val_clickbait.csv \
+    --test_path ./data/raw/test_clickbait.csv \
+    --save_path ./artifacts \
+    --batch_size 8 \
+    --lr 5e-4 \
+    --epochs 1 \
+    --max_len 50
 ```
 
 After training, model checkpoints are saved in:
@@ -190,13 +198,21 @@ After training, run inference with the saved model checkpoint.
 Example with a clickbait headline:
 
 ```powershell
-python -m clickbait_detector.inference --weight_path "D:\private\clickbait_detect_proj\artifacts\models\best.pth" --input_sentence "Bạn sẽ không tin điều gì đã xảy ra sau khi cô gái mở chiếc hộp bí ẩn này"
+python -m clickbait_detector.inference \
+    --weight_path "./artifacts/models/best.pth" \
+    --input_sentence "Bạn sẽ không tin điều gì đã xảy ra sau khi cô gái mở chiếc hộp bí ẩn này" \
+    --threshold 0.5 \
+    --max_len 50
 ```
 
 Example with a non-clickbait headline:
 
 ```powershell
-python -m clickbait_detector.inference --weight_path "D:\private\clickbait_detect_proj\artifacts\models\best.pth" --input_sentence "Chính phủ công bố kế hoạch nâng cấp hệ thống giao thông đô thị trong năm 2026"
+python -m clickbait_detector.inference \
+    --weight_path "./artifacts/models/best.pth" \
+    --input_sentence "Chính phủ công bố kế hoạch nâng cấp hệ thống giao thông đô thị trong năm 2026" \
+    --threshold 0.5 \
+    --max_len 50
 ```
 
 Important note:
@@ -241,41 +257,5 @@ clickbait_detector
 
 The `src/` directory is only the source-code container.
 
-## 9. Model Overview
 
-The project uses PhoBERT:
-
-```text
-vinai/phobert-base-v2
-```
-
-Text processing pipeline:
-
-```text
-raw headline
-→ lowercase
-→ remove punctuation
-→ normalize whitespace
-→ word segmentation with PyVi
-→ PhoBERT tokenizer
-→ input_ids + attention_mask
-```
-
-For binary classification, the recommended setup is:
-
-```python
-loss_fn = torch.nn.BCEWithLogitsLoss()
-```
-
-The model should return raw logits. During inference, convert logits to probabilities using:
-
-```python
-probs = torch.sigmoid(outputs)
-```
-
-Then apply a threshold:
-
-```python
-prediction = probs >= 0.5
-```
 
