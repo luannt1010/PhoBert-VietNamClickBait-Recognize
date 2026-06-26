@@ -1,13 +1,12 @@
-import pandas as pd
 from clickbait_detector.preprocessing import prepare_data
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
 class ClickBaitDataset(Dataset):
-    def __init__(self, root_dir, max_len=50):
+    def __init__(self, df, max_len=50):
         super().__init__()
 
-        self.df = pd.read_csv(root_dir)
+        self.df = df
         self.labels = self.df["final_label"].tolist()
         self.headlines = self.df["title"].tolist()
         self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base-v2")
