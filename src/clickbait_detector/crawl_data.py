@@ -114,14 +114,12 @@ def main():
                  "https://vnexpress.net/doi-song",
                  "https://ngoisao.vnexpress.net/showbiz/viet-nam",
                  "https://kenh14.vn/xa-hoi.chn",
-                 "https://2sao.vn/,"
-                 "https://vietnamnet.vn/",
                  "https://eva.vn/",
                  "https://suckhoedoisong.vn/",
                  "https://www.saostar.vn/",
                  "https://tuoitre.vn/",
                  "https://nld.com.vn/"]
-    urls = collect_article_links(seed_urls, max_links=1000, max_pages=200)
+    urls = collect_article_links(seed_urls, max_links=3000, max_pages=200)
     data = []
     for url in tqdm(urls):
         article = get_article(url, True, True, True)
@@ -130,11 +128,9 @@ def main():
         time.sleep(1)
     df = pd.DataFrame(data)
     print(df.head())
-    save_path = r"D:\private\clickbait_detect_proj\data\raw\articles_1000.csv"
+    save_path = r"D:\private\clickbait_detect_proj\data\raw\articles_3000.csv"
     df.to_csv(save_path, index=False, encoding="utf-8-sig")
     print("Đã lưu file articles2.csv")
 
 if __name__ == "__main__":
     main()
-    # print(get_article("https://afamily.vn/de-thi-mon-toan-vao-lop-10-chuyen-tin-tai-ha-noi-nam-2026-23626060112342338.chn",
-    #                   False, False, False))
