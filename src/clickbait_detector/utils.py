@@ -1,6 +1,8 @@
 import os
 import json
 import time
+import pandas as pd
+import numpy as np
 import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -14,14 +16,27 @@ def load_model(weight_path):
     model.load_state_dict(state_dict["model"])
     return model
 
+def create_data_split(df: pd.DataFrame, train_factor=0.8):
+    df = df.sample(frac=1.0, random_state=42).reset_index(drop=True)
+    val_factor = (1.0 - train_factor) * 0.5
+    train_size = int(len(df) * train_factor)
+    val_size = int(len(df) * val_factor)
+    train_df = df.iloc[:train_size]
+    val_df = df.iloc[train_size:val_size+train_size]
+    test_df = df.iloc[val_size+train_size:]
+    return train_df, val_df, test_df
+
 def create_dataloader(train_dataset, val_dataset, test_dataset, batch_size=8):
     train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size, shuffle=False)
     return train_loader, val_loader, test_loader
 
-def compute_f1_score(precision, recall):
-    return (2*precision*recall)/(precision+recall+1e-6)
+def compute_p_r_f1(y_true, y_preds):
+    p = precision_score(y_true, y_preds, average="macro", zero_division=0.0)
+    r = recall_score(y_true, y_preds, average="macro", zero_division=0.0)
+    f1 = (2*p*r)/(p+r+1e-6)
+    return p, r, f1
 
 def train_one_epoch(model, train_pbar, optimizer, loss_fn, device):
     model.train()
@@ -39,7 +54,6 @@ def train_one_epoch(model, train_pbar, optimizer, loss_fn, device):
 
         loss = loss_fn(outputs, target.unsqueeze(1).float())
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
 
         logits = torch.sigmoid(outputs).squeeze(1)
@@ -54,9 +68,8 @@ def train_one_epoch(model, train_pbar, optimizer, loss_fn, device):
 
     train_epoch_loss = train_running_loss / len(train_pbar)
     train_epoch_acc = num_corrects / num_preds
-    p = precision_score(all_gts, all_preds, average="macro", zero_division=0)
-    r = recall_score(all_gts, all_preds, average="macro", zero_division=0)
-    return train_epoch_loss, train_epoch_acc, p, r
+    p, r, f1 = compute_p_r_f1(all_gts, all_preds)
+    return train_epoch_loss, train_epoch_acc, p, r, f1
 
 
 def evaluate_one_epoch(model, val_pbar, loss_fn, device):
@@ -86,12 +99,11 @@ def evaluate_one_epoch(model, val_pbar, loss_fn, device):
 
         val_epoch_loss = val_running_loss / len(val_pbar)
         val_epoch_acc = num_corrects / num_preds
-        p = precision_score(all_gts, all_preds, average="macro", zero_division=0)
-        r = recall_score(all_gts, all_preds, average="macro", zero_division=0)
-    return all_probs, all_gts, val_epoch_loss, val_epoch_acc, p, r
+        p, r, f1 = compute_p_r_f1(all_gts, all_preds)
+    return all_probs, all_gts, val_epoch_loss, val_epoch_acc, p, r, f1
 
 def train(model, train_loader, val_loader, loss_fn, optimizer, num_epochs, sp, scheduler=None, patience=None):
-    best_val_acc = 0.0
+    best_val_f1 = 0
     best_epoch = 0
     history = {"tr_loss": [], "val_loss": [], "tr_acc": [], "val_acc": [],
                "tr_p": [], "tr_r": [], "val_p": [], "val_r": [], "tr_f1": [], "val_f1": [], "total_time": 0}
@@ -113,13 +125,10 @@ def train(model, train_loader, val_loader, loss_fn, optimizer, num_epochs, sp, s
         start = time.perf_counter()
 
         train_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Training]", leave=False)
-        train_epoch_loss, train_epoch_acc, tr_precision, tr_recall = train_one_epoch(model, train_pbar, optimizer,
+        train_epoch_loss, train_epoch_acc, tr_precision, tr_recall, tr_f1 = train_one_epoch(model, train_pbar, optimizer,
                                                                                loss_fn, device)
         val_pbar = tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Validating]", leave=False)
-        all_probs, all_gts, val_epoch_loss, val_epoch_acc, val_precision, val_recall = evaluate_one_epoch(model, val_pbar, loss_fn, device)
-
-        train_f1 = compute_f1_score(tr_precision, tr_recall)
-        val_f1 = compute_f1_score(val_precision, val_recall)
+        all_probs, all_gts, val_epoch_loss, val_epoch_acc, val_precision, val_recall, val_f1 = evaluate_one_epoch(model, val_pbar, loss_fn, device)
 
         val_all_probs.append(all_probs)
         val_all_gts.append(all_gts)
@@ -132,26 +141,26 @@ def train(model, train_loader, val_loader, loss_fn, optimizer, num_epochs, sp, s
         history["val_p"].append(val_precision)
         history["tr_r"].append(tr_recall)
         history["val_r"].append(val_recall)
-        history["tr_f1"].append(train_f1)
+        history["tr_f1"].append(tr_f1)
         history["val_f1"].append(val_f1)
 
         end = time.perf_counter()
         epoch_time = (end - start) / 60
         history["total_time"] += epoch_time
 
-        print(f"Epoch {epoch+1}/{num_epochs} - {epoch_time:.2f}m: train_loss={train_epoch_loss:.4f} train_acc={train_epoch_acc:.4f} P={tr_precision:.4f} R={tr_recall:.4f} F1={train_f1:.4f} | "
+        print(f"Epoch {epoch+1}/{num_epochs} - {epoch_time:.2f}m: train_loss={train_epoch_loss:.4f} train_acc={train_epoch_acc:.4f} P={tr_precision:.4f} R={tr_recall:.4f} F1={tr_f1:.4f} | "
               f"val_loss={val_epoch_loss:.4f} val_acc={val_epoch_acc:.4f} P={val_precision:.4f} R={val_recall:.4f} F1={val_f1:.4f}")
 
         if scheduler is not None:
             if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                scheduler.step(val_epoch_acc)
+                scheduler.step(val_epoch_loss)
             else:
                 scheduler.step()
 
         checkpoint = {"model": model.state_dict(), "optimizer": optimizer.state_dict(),
                       "loss": loss_fn.state_dict(), "epoch": epoch}
-        if best_val_acc < val_epoch_acc:
-            best_val_acc = val_epoch_acc
+        if best_val_f1 < val_f1:
+            best_val_f1 = val_f1
             best_epoch = epoch
             torch.save(checkpoint, best_save_path)
         torch.save(checkpoint, last_save_path)
@@ -167,21 +176,22 @@ def train(model, train_loader, val_loader, loss_fn, optimizer, num_epochs, sp, s
     with open(history_save_path, "w") as f:
         json.dump(history, f)
 
+def annotate(ax, x, y):
+    arr_y = np.asarray(y)
+    idx_min = np.argmin(arr_y)
+    idx_max = np.argmax(arr_y)
+    val_min = y[idx_min]
+    val_max = y[idx_max]
 
-def annotate_min(ax, x, y, label="Min"):
-    idx = min(range(len(y)), key=lambda i: y[i])
-    ax.annotate(f"{label}: {y[idx]:.4f}",
-                xy=(x[idx], y[idx]), xytext=(0, -25),
+    ax.annotate(f"Min: {val_min:.4f}",
+                xy=(x[idx_min], val_min), xytext=(0, -25),
+                textcoords="offset points", ha="center",
+                arrowprops=dict(arrowstyle="->"))
+    ax.annotate(f"Max: {val_max:.4f}",
+                xy=(x[idx_max], val_max), xytext=(0, 15),
                 textcoords="offset points", ha="center",
                 arrowprops=dict(arrowstyle="->"))
 
-
-def annotate_max(ax, x, y, label="Max"):
-    idx = max(range(len(y)), key=lambda i: y[i])
-    ax.annotate(f"{label}: {y[idx]:.4f}",
-                xy=(x[idx], y[idx]), xytext=(0, 15),
-                textcoords="offset points",ha="center",
-                arrowprops=dict(arrowstyle="->"))
 def show_results(history, sp=None):
     tr_loss = history["tr_loss"]
     val_loss = history["val_loss"]
@@ -197,10 +207,10 @@ def show_results(history, sp=None):
 
     # 1. Loss
     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-    ax[0].plot(num_epochs, tr_loss, label="Train Loss")
-    ax[0].plot(num_epochs, val_loss, label="Val Loss")
-    annotate_min(ax[0], num_epochs, tr_loss, label="Train min")
-    annotate_min(ax[0], num_epochs, val_loss, label="Val min")
+    ax[0].plot(num_epochs, tr_loss, label="Train Loss", marker="o")
+    ax[0].plot(num_epochs, val_loss, label="Val Loss", marker="o")
+    annotate(ax[0], num_epochs, tr_loss)
+    annotate(ax[0], num_epochs, val_loss)
     ax[0].set_title("Loss")
     ax[0].set_xlabel("Epoch")
     ax[0].set_ylabel("Loss")
@@ -208,10 +218,10 @@ def show_results(history, sp=None):
     ax[0].grid(True)
 
     # 2. Accuracy
-    ax[1].plot(num_epochs, tr_acc, label="Train Accuracy")
-    ax[1].plot(num_epochs, val_acc, label="Val Accuracy")
-    annotate_max(ax[1], num_epochs, tr_acc, label="Train max")
-    annotate_max(ax[1], num_epochs, val_acc, label="Val max")
+    ax[1].plot(num_epochs, tr_acc, label="Train Accuracy", marker="o")
+    ax[1].plot(num_epochs, val_acc, label="Val Accuracy", marker="o")
+    annotate(ax[1], num_epochs, tr_acc)
+    annotate(ax[1], num_epochs, val_acc)
     ax[1].set_title("Accuracy")
     ax[1].set_xlabel("Epoch")
     ax[1].set_ylabel("Accuracy")
@@ -222,10 +232,10 @@ def show_results(history, sp=None):
 
     # 3. Precision
     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-    ax[0].plot(num_epochs, tr_p, label="Train Precision")
-    ax[0].plot(num_epochs, val_p, label="Val Precision")
-    annotate_max(ax[0], num_epochs, tr_p, label="Train max")
-    annotate_max(ax[0], num_epochs, val_p, label="Val max")
+    ax[0].plot(num_epochs, tr_p, label="Train Precision", marker="o")
+    ax[0].plot(num_epochs, val_p, label="Val Precision", marker="o")
+    annotate(ax[0], num_epochs, tr_p)
+    annotate(ax[0], num_epochs, val_p)
     ax[0].set_title("Precision")
     ax[0].set_xlabel("Epoch")
     ax[0].set_ylabel("Precision")
@@ -233,10 +243,10 @@ def show_results(history, sp=None):
     ax[0].grid(True)
 
     # 4. Recall
-    ax[1].plot(num_epochs, tr_r, label="Train Recall")
-    ax[1].plot(num_epochs, val_r, label="Val Recall")
-    annotate_max(ax[1], num_epochs, tr_r, label="Train max")
-    annotate_max(ax[1], num_epochs, val_r, label="Val max")
+    ax[1].plot(num_epochs, tr_r, label="Train Recall", marker="o")
+    ax[1].plot(num_epochs, val_r, label="Val Recall", marker="o")
+    annotate(ax[1], num_epochs, tr_r)
+    annotate(ax[1], num_epochs, val_r)
     ax[1].set_title("Recall")
     ax[1].set_xlabel("Epoch")
     ax[1].set_ylabel("Recall")
@@ -247,10 +257,10 @@ def show_results(history, sp=None):
 
     # 5. F1-score
     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-    ax[0].plot(num_epochs, tr_f1, label="Train F1-score")
-    ax[0].plot(num_epochs, val_f1, label="Val F1-score")
-    annotate_max(ax[0], num_epochs, tr_f1, label="Train max")
-    annotate_max(ax[0], num_epochs, val_f1, label="Val max")
+    ax[0].plot(num_epochs, tr_f1, label="Train F1-score", marker="o")
+    ax[0].plot(num_epochs, val_f1, label="Val F1-score", marker="o")
+    annotate(ax[0], num_epochs, tr_f1)
+    annotate(ax[0], num_epochs, val_f1)
     ax[0].set_title("F1-score")
     ax[0].set_xlabel("Epoch")
     ax[0].set_ylabel("F1-score")
