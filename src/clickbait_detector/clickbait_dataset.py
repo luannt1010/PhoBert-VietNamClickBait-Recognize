@@ -7,8 +7,8 @@ class ClickBaitDataset(Dataset):
         super().__init__()
 
         self.df = df
-        self.labels = self.df["final_label"].tolist()
-        self.headlines = self.df["title"].tolist()
+        self.labels = self.df["label"].tolist()
+        self.headlines = self.df["title_combined"].tolist()
         self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base-v2")
         self.input_ids, self.attention_mask = prepare_data(self.headlines, self.tokenizer, max_len)
 
@@ -21,12 +21,3 @@ class ClickBaitDataset(Dataset):
         attention_mask = self.attention_mask[idx]
         return target, input_ids, attention_mask
 
-# if __name__ == "__main__":
-#     import pandas as pd
-#     from transformers import AutoTokenizer
-#     tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base-v2")
-#     train_df = pd.read_csv(r"D:\private\clickbait_detect_proj\data\raw\train_clickbait.csv")
-#     d = ClickBaitDataset(train_df, tokenizer)
-#     print("1")
-#
-#     print(d[1])
