@@ -7,23 +7,22 @@ class Model(nn.Module):
         self.bert = AutoModel.from_pretrained("vinai/phobert-base-v2")
 
         self.dropout = nn.Dropout(dropout_rate)
+        hidden_size = self.bert.config.hidden_size
+        self.classify1 = nn.Sequential(nn.Linear(hidden_size, 256),
+                                       nn.BatchNorm1d(256),
+                                       nn.ReLU(),
+                                       nn.Dropout(dropout_rate))
 
-        self.classify1 = nn.Sequential(nn.Linear(self.bert.config.hidden_size, 256, bias=False),
-                                        nn.BatchNorm1d(256),
-                                        nn.ReLU(),
-                                       nn.Dropout(0.1))
-
-        self.classify2 = nn.Sequential(nn.Linear(256, 128, bias=False),
+        self.classify2 = nn.Sequential(nn.Linear(256, 128),
                                        nn.BatchNorm1d(128),
                                        nn.ReLU(),
-                                       nn.Dropout(0.1))
+                                       nn.Dropout(dropout_rate))
 
-        self.classify3 = nn.Sequential(nn.Linear(128, 64, bias=False),
-                                        nn.BatchNorm1d(64),
-                                        nn.ReLU(),
-                                       nn.Dropout(0.1))
-        self.classify4 = nn.Sequential(nn.Linear(64, 1, bias=False),
-                                       nn.BatchNorm1d(1))
+        self.classify3 = nn.Sequential(nn.Linear(128, 64),
+                                       nn.BatchNorm1d(64),
+                                       nn.ReLU(),
+                                       nn.Dropout(dropout_rate))
+        self.classify4 = nn.Sequential(nn.Linear(64, 1))
 
         self._init_weight()
 
@@ -32,6 +31,7 @@ class Model(nn.Module):
             for m in module.modules():
                 if isinstance(m, nn.Linear):
                     nn.init.normal_(m.weight, mean=0.0, std=0.02)
+                    nn.init.zeros_(m.bias)
 
 
     def forward(self, input_ids, attention_mask):
