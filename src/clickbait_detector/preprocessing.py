@@ -29,4 +29,3 @@ def prepare_data(headlines, tokenizer, max_len=50):
     input_ids = encoded["input_ids"]
     attention_mask = encoded["attention_mask"]
     return input_ids, attention_mask
-
