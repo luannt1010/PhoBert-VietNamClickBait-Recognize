@@ -27,7 +27,7 @@ def infer(model, input_sentence, threshold=0.5, max_len=50):
         outputs = model(input_ids, attention_mask)
         score = torch.sigmoid(outputs).squeeze(1).item()
     print(f"Sentence: {input_sentence}")
-    print(f"Prediction: {"clickbait" if score >= threshold else "non-clickbait"}")
+    print(f"Prediction: {'clickbait' if score >= threshold else 'non-clickbait'}")
     print(f"Score: {score}")
 
 if __name__ == "__main__":
