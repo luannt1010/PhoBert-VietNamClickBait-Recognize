@@ -11,7 +11,8 @@ from clickbait_detector.net import Model
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc
 
 def load_model(weight_path):
-    state_dict = torch.load(weight_path)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    state_dict = torch.load(weight_path, map_location=device)
     model = Model()
     model.load_state_dict(state_dict["model"])
     return model
