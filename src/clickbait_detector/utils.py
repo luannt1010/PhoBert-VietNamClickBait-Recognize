@@ -8,7 +8,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from clickbait_detector.net import Model
-from sklearn.metrics import precision_score, recall_score, roc_curve, auc
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc
 
 def load_model(weight_path):
     state_dict = torch.load(weight_path)
@@ -35,7 +35,7 @@ def create_dataloader(train_dataset, val_dataset, test_dataset, batch_size=8):
 def compute_p_r_f1(y_true, y_preds):
     p = precision_score(y_true, y_preds, average="macro", zero_division=0.0)
     r = recall_score(y_true, y_preds, average="macro", zero_division=0.0)
-    f1 = (2*p*r)/(p+r+1e-6)
+    f1 = f1_score(y_true, y_preds, average="macro", zero_division=0.0)
     return p, r, f1
 
 def train_one_epoch(model, train_pbar, optimizer, loss_fn, device):
