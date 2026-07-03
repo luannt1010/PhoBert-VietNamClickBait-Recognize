@@ -11,7 +11,7 @@ def get_args():
     parser.add_argument("--input_sentence", type=str)
 
     parser.add_argument("--threshold", type=float, default=0.5)
-    parser.add_argument("--max_len", type=int, default=50)
+    parser.add_argument("--max_len", type=int, default=256)
 
     return parser.parse_args()
 
