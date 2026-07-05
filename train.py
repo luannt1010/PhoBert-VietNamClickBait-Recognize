@@ -37,6 +37,7 @@ def get_args():
     parser.add_argument("--max_len", type=int, default=256)
     parser.add_argument("--patience", type=int, default=0)
     parser.add_argument("--dropout", type=float, default=0.3)
+
     return parser.parse_args()
 
 def main():
