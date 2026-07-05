@@ -2,9 +2,9 @@ import torch.nn as nn
 from transformers import AutoModel
 
 class Model(nn.Module):
-    def __init__(self, dropout_rate=0.3):
+    def __init__(self, dropout_rate=0.3, model_dir="vinai/phobert-base-v2"):
         super().__init__()
-        self.bert = AutoModel.from_pretrained("vinai/phobert-base-v2")
+        self.bert = AutoModel.from_pretrained(model_dir)
 
         self.dropout = nn.Dropout(dropout_rate)
         hidden_size = self.bert.config.hidden_size
