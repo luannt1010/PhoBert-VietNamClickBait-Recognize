@@ -8,12 +8,14 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from clickbait_detector.net import Model
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc
+from sklearn.metrics import (precision_score, recall_score, f1_score,
+                             roc_curve, auc, accuracy_score, confusion_matrix, ConfusionMatrixDisplay)
 
-def load_model(weight_path):
+
+def load_model_from_state_dict(weight_path, config_dir):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     state_dict = torch.load(weight_path, map_location=device)
-    model = Model()
+    model = Model(model_dir=config_dir)
     model.load_state_dict(state_dict["model"])
     return model
 
@@ -28,9 +30,9 @@ def create_data_split(df: pd.DataFrame, train_factor=0.8):
     return train_df, val_df, test_df
 
 def create_dataloader(train_dataset, val_dataset, test_dataset, batch_size=8):
-    train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size, shuffle=True, pin_memory=True, num_workers=2)
+    val_loader = DataLoader(val_dataset, batch_size, shuffle=False, pin_memory=True, num_workers=2)
+    test_loader = DataLoader(test_dataset, batch_size, shuffle=False, pin_memory=True, num_workers=2)
     return train_loader, val_loader, test_loader
 
 def compute_p_r_f1(y_true, y_preds):
@@ -72,6 +74,113 @@ def train_one_epoch(model, train_pbar, optimizer, loss_fn, device):
     p, r, f1 = compute_p_r_f1(all_gts, all_preds)
     return train_epoch_loss, train_epoch_acc, p, r, f1
 
+def evaluate_on_test_set(model, test_loader, best_threshold, sp):
+    os.makedirs(sp, exist_ok=True)
+    report_save_path = os.path.join(sp, "reports")
+    os.makedirs(report_save_path, exist_ok=True)
+    eval_result_path = os.path.join(report_save_path, "eval_on_test_set.json")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+    test_pbar = tqdm(test_loader, desc="[EVALUATING]")
+    all_probs = []
+    all_gts = []
+    with torch.no_grad():
+        for target, input_ids, attention_mask in test_pbar:
+            target = target.to(device)
+            input_ids = input_ids.to(device)
+            attention_mask = attention_mask.to(device)
+            outputs = model(input_ids, attention_mask)
+            probs = torch.sigmoid(outputs).squeeze(1)
+            all_probs.extend(probs.cpu().tolist())
+            all_gts.extend(target.cpu().tolist())
+    all_probs = np.asarray(all_probs)
+    all_gts = np.asarray(all_gts)
+    fpr, tpr, thresholds = roc_curve(all_gts, all_probs)
+    roc_auc = auc(fpr, tpr)
+
+    preds = (all_probs >= best_threshold).astype(int)
+    p, r, f1 = compute_p_r_f1(all_gts, preds)
+    acc = accuracy_score(all_gts, preds)
+    cm = confusion_matrix(all_gts, preds, labels=[0, 1])
+
+    # Plot Confusion matrix, Roc curve
+    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+    ax[0].plot(fpr, tpr, label=f"AUC = {roc_auc:.4f}")
+    ax[0].plot([1], [1], linestyle="--", label="Random")
+    ax[0].set_title(f"ROC Curve")
+    ax[0].set_xlabel("False Positive Rate")
+    ax[0].set_ylabel("True Positive Rate")
+    ax[0].legend()
+    ax[0].grid(True)
+
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Non-clickbait", "Clickbait"])
+    disp.plot(ax=ax[1], values_format="d", colorbar=False)
+    ax[1].set_title("Confusion Matrix")
+    ax[1].set_xlabel("Predicted Label")
+    ax[1].set_ylabel("True Label")
+
+    with open(eval_result_path, "w") as f:
+        json.dump({"best_threshold": best_threshold, "accuracy": acc, "precision": p, "recall": r, "f1": f1}, f)
+    fig.savefig(os.path.join(report_save_path, "roc_curve_confusion_matrix.png"))
+    print("Saved evaluate on test set result successfully!")
+
+    plt.tight_layout()
+    plt.show()
+
+def tune_threshold(model, val_loader, sp):
+    os.makedirs(sp, exist_ok=True)
+    report_save_path = os.path.join(sp, "reports")
+    os.makedirs(report_save_path, exist_ok=True)
+    tune_result_path = os.path.join(report_save_path, "tune_result.csv")
+    best_threshold_path = os.path.join(report_save_path, "best_threshold.json")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+    thresholds = np.arange(0.05, 0.96, 0.01)
+
+    all_probs = []
+    all_gts = []
+    val_pbar = tqdm(val_loader, desc="[TUNING]")
+    with torch.no_grad():
+        for target, input_ids, attention_mask in val_pbar:
+            target = target.to(device)
+            input_ids = input_ids.to(device)
+            attention_mask = attention_mask.to(device)
+            outputs = model(input_ids, attention_mask)
+            probs = torch.sigmoid(outputs).squeeze(1)
+            all_probs.extend(probs.cpu().numpy().tolist())
+            all_gts.extend(target.cpu().numpy().tolist())
+    all_probs = np.asarray(all_probs)
+    all_gts = np.asarray(all_gts).astype(int)
+    results = []
+    for threshold in thresholds:
+        preds = (all_probs >= threshold).astype(int)
+        acc = accuracy_score(all_gts, preds)
+        precision = precision_score(all_gts, preds, zero_division=0)
+        recall = recall_score(all_gts, preds, zero_division=0)
+        f1 = f1_score(all_gts, preds, zero_division=0)
+        tn, fp, fn, tp = confusion_matrix(all_gts, preds, labels=[0, 1]).ravel()
+        results.append({"threshold": round(float(threshold), 4),
+                        "accuracy": acc, "precision": precision, "recall": recall, "f1": f1,
+                        "tn": tn, "fp": fp, "fn": fn, "tp": tp})
+
+    tune_result = pd.DataFrame(results)
+    tune_result.to_csv(tune_result_path, index=False)
+
+    best_row = tune_result.loc[tune_result["f1"].idxmax()]
+    best_threshold = float(best_row["threshold"])
+    with open(best_threshold_path, "w", encoding="utf-8") as f:
+        json.dump({
+            "best_threshold": best_threshold, "best_f1": float(best_row["f1"]),
+            "precision": float(best_row["precision"]),
+            "recall": float(best_row["recall"]),
+            "accuracy": float(best_row["accuracy"])}, f, ensure_ascii=False, indent=4)
+
+    print("Saved tune results successfully!")
+    print("Saved best threshold successfully!")
 
 def evaluate_one_epoch(model, val_pbar, loss_fn, device):
     model.eval()
@@ -173,9 +282,9 @@ def train(model, train_loader, val_loader, loss_fn, optimizer, num_epochs, sp, s
 
     history["val_all_probs"] = val_all_probs
     history["val_all_gts"] = val_all_gts
-    show_results(history, report_save_path)
     with open(history_save_path, "w") as f:
         json.dump(history, f)
+    return history
 
 def annotate(ax, x, y):
     arr_y = np.asarray(y)
@@ -194,6 +303,11 @@ def annotate(ax, x, y):
                 arrowprops=dict(arrowstyle="->"))
 
 def show_results(history, sp=None):
+
+    os.makedirs(sp, exist_ok=True)
+    report_save_path = os.path.join(sp, "reports")
+    os.makedirs(report_save_path, exist_ok=True)
+
     tr_loss = history["tr_loss"]
     val_loss = history["val_loss"]
     tr_acc = history["tr_acc"]
@@ -229,7 +343,7 @@ def show_results(history, sp=None):
     ax[1].legend()
     ax[1].grid(True)
     if sp is not None:
-        fig.savefig(os.path.join(sp, "loss_acc.png"))
+        fig.savefig(os.path.join(report_save_path, "loss_acc.png"))
 
     # 3. Precision
     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
@@ -254,7 +368,7 @@ def show_results(history, sp=None):
     ax[1].legend()
     ax[1].grid(True)
     if sp is not None:
-        fig.savefig(os.path.join(sp, "precision_recall.png"))
+        fig.savefig(os.path.join(report_save_path, "precision_recall.png"))
 
     # 5. F1-score
     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
@@ -290,7 +404,7 @@ def show_results(history, sp=None):
         ax[1].set_title("ROC Curve")
         ax[1].axis("off")
     if sp is not None:
-        fig.savefig(os.path.join(sp, "f1_roc.png"))
+        fig.savefig(os.path.join(report_save_path, "f1_roc.png"))
 
     plt.tight_layout()
     plt.show()
