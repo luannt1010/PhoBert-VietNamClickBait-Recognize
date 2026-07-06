@@ -30,8 +30,8 @@ def get_args():
     parser.add_argument("--data_dir", type=str, default=r".\data\processed\combined_dataset.csv")
     parser.add_argument("--save_path", type=str, default=r".\artifacts")
 
-    parser.add_argument("--backbone_lr", type=int, default=5e-6)
-    parser.add_argument("--classify_lr", type=int, default=2e-5)
+    parser.add_argument("--backbone_lr", type=float, default=5e-6)
+    parser.add_argument("--classify_lr", type=float, default=2e-5)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--max_len", type=int, default=256)
@@ -83,9 +83,10 @@ def main():
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min")
 
-    print(f"Model {config_dir.split('/')[-1]} is training on {device}.")
+    print(f"Model {config_dir} is training on {device}.")
 
     history = train(model, train_loader, val_loader, loss_fn, optimizer, epochs, sp, scheduler, None if patience==0 else patience)
+    show_results(history, sp)
 
     weight_path = os.path.join(sp + "/models", "last.pth")
     model = load_model_from_state_dict(weight_path, config_dir)
@@ -95,7 +96,6 @@ def main():
     with open(best_result_path, "r") as f:
         best_result = json.load(f)
     evaluate_on_test_set(model, test_loader, best_result["best_threshold"], sp)
-    show_results(history, sp)
 
 if __name__ == "__main__":
     main()
