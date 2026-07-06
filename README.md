@@ -171,7 +171,7 @@ Important columns:
 
 In this project, the model is trained using a combination of the article title, lead paragraph, and body content. To construct the training dataset, we merged four available data files: `test_clickbait.csv`, `train_clickbait.csv`, `val_clickbait.csv`, and `clickbait_dataset_vietnamese.csv`. In addition, we collected more Vietnamese news articles through web crawling and manually labeled them as clickbait or non-clickbait. This additional data was used to increase the dataset size and reduce the class imbalance problem, helping the model learn more effectively from both clickbait and non-clickbait samples.
 
-You can download `test_clickbait.csv`, `train_clickbait.csv`, `val_clickbait.csv` in download_dataset notebook, `clickbait_dataset_vietnamese.csv` in kaggle, and combine it in process_imbalance notebook. If you can't do this, you also download it at https://drive.google.com/drive/folders/1CRyXBZicxu-dxQuqzguI__TfBRe2sk6r?usp=sharing. I did it for you.
+You can download `test_clickbait.csv`, `train_clickbait.csv`, `val_clickbait.csv` in download_dataset notebook, `clickbait_dataset_vietnamese.csv` in kaggle, and combine it in process_imbalance notebook. If you can't do this, you also download it at https://drive.google.com/drive/folders/1DukjjtxNZPUfpRvd4f12ueQrDdyBf4qj?usp=sharing. I did it for you.
 
 
 ## 7. Local PhoBERT Models
@@ -258,7 +258,7 @@ f1_roc.png                       plot of F1-score during training and ROC curve 
 roc_curve_confusion_matrix.png   ROC curve and confusion matrix on the test set
 ```
 
-After training, run inference with the saved model checkpoint. Training might take quite a long time, and if you can't, you can download it here https://drive.google.com/drive/folders/1H1pNDpdn2ikGbwLrdz4lY6ie6qADp4zZ?usp=sharing. I did it for you.
+After training, run inference with the saved model checkpoint. Training might take quite a long time, and if you can't, you can download it here https://drive.google.com/drive/folders/1CRyXBZicxu-dxQuqzguI__TfBRe2sk6r?usp=sharing. I did it for you.
 
 
 ## 9. Current Results
