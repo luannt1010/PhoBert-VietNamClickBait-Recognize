@@ -1,31 +1,66 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "clickbait-detector"
-version = "0.1.0"
-description = "Vietnamese clickbait headline detection using PhoBERT"
-readme = "README.md"
+version = "0.2.0"
+description = "Vietnamese clickbait detection with PhoBERT, CLI inference, crawling utilities, and Streamlit app."
+readme = "README2.md"
 requires-python = ">=3.10"
-
+keywords = ["clickbait", "vietnamese", "phobert", "nlp", "text-classification"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
 dependencies = [
-    "torch",
-    "transformers",
-    "numpy",
-    "pandas",
-    "scikit-learn",
-    "tqdm",
-    "pyvi",
-    "matplotlib"
+    "torch>=2.2.0",
+    "transformers>=4.40.0",
+    "safetensors>=0.4.0",
+    "numpy>=1.26.0",
+    "pandas>=2.1.0",
+    "scikit-learn>=1.3.0",
+    "tqdm>=4.66.0",
+    "pyvi>=0.1.1",
+    "matplotlib>=3.8.0",
+    "streamlit>=1.35.0",
+    "openpyxl>=3.1.0",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest",
-    "black",
-    "isort"
+notebook = [
+    "datasets>=2.18.0",
+    "seaborn>=0.13.0",
+    "notebook>=7.0.0",
+    "ipykernel>=6.29.0",
 ]
+dev = [
+    "pytest>=8.0.0",
+    "black>=24.0.0",
+    "isort>=5.13.0",
+]
+
+[project.scripts]
+clickbait-infer = "clickbait_detector.inference:main"
+clickbait-crawl = "clickbait_detector.crawl_data:main"
+download-phobert = "clickbait_detector.download_phobert:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
