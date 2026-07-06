@@ -43,7 +43,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--config_dir", type=str, default="vinai/phobert-base-v2")
-    parser.add_argument("--weight_path", type=str, default=r".\artifacts\models\best.pth")
+    parser.add_argument("--weight_path", type=str, default=r".\artifacts\models\last.pth")
     parser.add_argument("--input_sentence", type=str)
 
     parser.add_argument("--threshold", type=float, default=0.5)
