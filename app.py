@@ -7,7 +7,7 @@ st.set_page_config(page_title="Vietnamese Clickbait Detection", layout="centered
 @st.cache_resource
 def load_predictor():
     predictor = ClickBaitPredictor(config_dir=r".\configs\phobert-base-v2",
-                                   weight_path=r".\artifacts\phobert-base-v2-final\models\last.pth",
+                                   weight_path=r".\artifacts\models\last.pth",
                                    max_len=256, threshold=0.5)
     return predictor
 
