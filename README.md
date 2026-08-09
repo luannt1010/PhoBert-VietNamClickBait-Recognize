@@ -3,7 +3,7 @@
 This project detects whether a Vietnamese news headline or article is
 **clickbait** or **non-clickbait** using PhoBERT. The current version supports
 model training, validation threshold tuning, test-set evaluation, command-line
-inference, web crawling utilities, local PhoBERT model folders, and a Streamlit
+inference, web crawling utilities, local PhoBERT model folders, and a Streamlit with FastAPI implement
 app for interactive prediction.
 
 
@@ -83,6 +83,10 @@ clickbait_detect_proj/
 │   └── process_imbalance.ipynb
 │
 ├── src/
+│   ├── api/
+│   │   ├── __init__.py
+│   │   └── main.py
+│   │
 │   └── clickbait_detector/
 │       ├── __init__.py
 │       ├── clickbait_dataset.py
@@ -316,7 +320,12 @@ Notes:
 
 ## 11. Streamlit App
 
-Run the app:
+First, Run the FastAPI server:
+~~~bash
+uvicorn src.api.main:app --reload
+~~~
+
+Second, Run the app:
 
 ```bash
 streamlit run app.py
