@@ -22,13 +22,13 @@ class ClickBaitPredictor:
         self.model.eval()
         outputs = self.model(input_ids, attention_mask)
         score = torch.sigmoid(outputs).squeeze(1).item()
-        return {"Sentence": title, "Label": 'clickbait' if score >= self.threshold else 'non-clickbait', "Score": round(score, 4)}
+        return {"sentence": title, "label": 'clickbait' if score >= self.threshold else 'non-clickbait', "score": round(score, 4)}
 
     @torch.no_grad()
     def predict_file(self, df: pd.DataFrame):
         titles = df['title'].tolist()
         results = [self.predict_one_title(title) for title in titles]
-        return pd.DataFrame(results)
+        return results
 
     @torch.no_grad()
     def predict_url(self, url):
